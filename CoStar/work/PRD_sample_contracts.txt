@@ -1,0 +1,13 @@
+/*
+-----------------------------------------------
+-------- These are Tryout Contracts ----------
+----------------------------------------------
+
+184123
+184363
+192837
+195669
+*/
+
+select P.ProductDesc, * from Staging..LineItem LI LEFT JOIN Staging..Product P  ON LI.ProductID=P.ProductID
+where LI.ContractID=184123 order by P.ProductID

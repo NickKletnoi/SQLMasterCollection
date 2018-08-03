@@ -1,0 +1,1 @@
+select * from [BusinessType] order by BusinessTypeID

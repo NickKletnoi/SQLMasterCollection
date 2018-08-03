@@ -1,0 +1,690 @@
+--------------------------------------------------------
+---Dups1 -----------------------------------------------
+--------------------------------------------------------
+WITH DUPS AS
+( SELECT MarketID, ROW_NUMBER() OVER (PARTITION BY MarketID ORDER BY MarketID) AS MK
+  FROM [dbo].[Market]
+)
+DELETE FROM DUPS WHERE MK > 1;
+
+-----------------------------------
+Dups2
+-----------------------------------
+SELECT [FI_DOCUMENT_NO], [FY_PERIOD],[LEVEL_NUMBER], COUNT(*)
+FROM  [STG_TD].[FM_FI_LNITMS]	
+GROUP BY [FI_DOCUMENT_NO], [FY_PERIOD],[LEVEL_NUMBER]
+HAVING COUNT(*)>1
+
+------------------------------------------------
+---Ranking -------------------------------------
+SELECT TOP(10) BusinessEntityID, Sum(Amount),   
+       RANK() OVER (ORDER BY Sum(Amount) DESC) AS RankBySales  
+FROM Sales.SalesHistory AS SH
+GROUP BY BusinessEntityID
+---------------------------------------------------
+----Top 1 with Most--------------------------------
+SELECT TOP 1 ContractID, COUNT([SKUID]) NumOfSkus
+from [dbo].[LineItem] L 
+GROUP BY ContractID
+ORDER BY COUNT([SKUID]) DESC
+
+-----------------------------------------------
+-- Dispaying the nth larget value in the list
+-- Substitute rnk with the desired value ------
+----------------------------------------------
+
+WITH cte1  as (
+SELECT 
+RANK() OVER (ORDER BY salary DESC ) as  rnk, *
+FROM Employee )
+SELECT * FROM cte1 WHERE rnk=4;
+
+
+---Update
+UPDATE P
+SET P.XX=Y.ZZZ
+FROM ORDERS O JOIN PRODUCTS P ON O.ORDERID=P.ORDERID
+
+
+---Delete
+DELETE OD
+FROM ORDERS O JOIN ORDERDETAILS OD ON O.ORDERID=OD.ORDERID
+WHERE O.ORDERID=12
+
+
+---Function1
+CREATE FUNCTION [dbo].[fnGetMaxSku](@ContractID INT)  
+RETURNS INT   
+AS   
+-- Returns a Sku having the most LineItemID's for a given Contract  
+BEGIN  
+    DECLARE @Sku INT; 	 
+    SELECT  @Sku = A.SKUID  
+    FROM (
+	 SELECT L.SKUID, COUNT(L.LineItemID) as Maxcnt
+	  FROM RevPro..LineItem L 
+	   WHERE L.ContractID=@ContractID
+	     GROUP BY L.SKUID ) A  
+    WHERE A.Maxcnt=(SELECT MAX(A.Maxcnt) FROM A) 
+	 
+    RETURN @Sku;  
+END; 
+------
+CREATE FUNCTION [dbo].[fnGetVarMonth](@d varchar(10))  
+RETURNS Varchar(10)
+AS   
+
+BEGIN  
+   DECLARE @c DATE 
+   DECLARE @v VARCHAR(10)
+SET @c=CONVERT(DATE,@d)
+SET @v = CONVERT(VARCHAR(10),UPPER(LEFT(DATENAME(MONTH,@c),3))) + CONVERT(CHAR(2), RIGHT(YEAR(@c),2)) + '.'
+--select convert(varchar(10),getdate(),101) as SmallDate	 
+    RETURN @v;  
+END;  
+----
+
+
+---Function2 (Split)
+CREATE FUNCTION [etl].[Split](@String varchar(8000), @Delimiter char(1)) 
+returns @temptable TABLE (items varchar(8000)) 
+as 
+begin 
+ declare @idx int 
+ declare @slice varchar(8000) 
+ select @idx = 1 
+ if len(@String)<1 or @String is null return 
+ while @idx!= 0 
+ begin 
+  set @idx = charindex(@Delimiter,@String) 
+  if @idx!=0 
+   set @slice = left(@String,@idx - 1) 
+  else 
+   set @slice = @String 
+  if(len(@slice)>0) 
+   insert into @temptable(Items) values(@slice) 
+   set @String = right(@String,len(@String) - @idx) 
+  if len(@String) = 0 break 
+ end 
+return 
+end
+
+
+--Pivot1
+SELECT CUSTOMERID, 
+SUM(CASE WHEN CATEGORYID=6 THEN QUANTITY ELSE 0 END) AS MEATUNITS,
+SUM(CASE WHEN CATEGORYID=8 THEN QUANTITY ELSE 0 END) AS SEAFOOTUNITS
+FROM ORDERS O JOIN ORDERDETAILS OD ON ... JOIN PRODUCTS ... ON ... 
+GROUP BY CUSTOMERID
+
+
+--Pivot2
+SELECT 
+CustomerName as CustomerHQ , 
+[201607] as '2016-JUL',
+[201608] as '2016-AUG'
+FROM   
+(SELECT N.[InvoiceAmount] as Amount,N.[ChargeYearMonth] as YearMonth , C.CustomerName as CustomerName
+FROM [cube].[F_ProductRevenueNAV] N 
+) p  
+PIVOT  
+(  
+SUM(Amount)  
+FOR YearMonth IN  
+( [201607],[201608])  
+) AS pvt  
+ORDER BY pvt.CustomerName;  
+
+
+----fiB
+DECLARE @first INT=0,@second INT=1,@current INT,@result INT,@size INT=30,@count INT=2
+IF @size<2 begin print 'the request is invalid' end
+WHILE (@count<@size)
+BEGIN
+SET @current=@first+@second;
+SET @first=@second;
+SET @second=@current;
+SET @count=@count+1;
+PRINT cast(@current as varchar(25)) + '>>> ' +cast(@count as varchar(25)) ; 
+END
+--- alternative solution using CTE with recursion:
+WITH  fib AS ( 
+    SELECT 0 f1, 1 f2 
+    UNION ALL 
+    SELECT f2, (f1+f2) FROM fib ) 
+SELECT top 10 f1 FROM fib ;
+
+
+
+---Recursion with CTE
+WITH Numbers (N) AS (
+    SELECT 1 UNION ALL
+    SELECT 1 + N FROM Numbers WHERE N < 500 
+)
+SELECT N FROM Numbers
+OPTION (MAXRECURSION 500)
+
+
+---Trigger
+Create TRIGGER apt.trgr_SSIS_Configurations_in_RevPro_Upd  
+ON dbo.SSIS_Configurations 
+AFTER UPDATE   
+AS   
+IF (UPDATE (ConfiguredValue) )  
+BEGIN  
+
+UPDATE RC
+SET RC.ConfiguredValue=SC.ConfiguredValue
+FROM dbo.SSIS_Configurations SC JOIN RevPro..SSIS_Configurations RC ON SC.ConfigurationFilter=RC.ConfigurationFilter
+END;
+
+
+---Loop Simple
+DECLARE @e TABLE (i INT)
+DECLARE @i INT
+INSERT INTO @e SELECT UserID i FROM dbo.Users WHERE IsActive = 1  -- your query to select a load list;
+WHILE EXISTS (SELECT 1 FROM @e)
+BEGIN 
+	SELECT TOP 1 @i = i FROM @e
+
+    					 EXEC dbo.DoSomething @i -- your code to do something for a particular i goes here
+
+       DELETE FROM @e where i = @i
+END
+-----
+
+
+--Loop1 Simple
+DECLARE @Count INT=1, @Size INT=30
+WHILE (@Count<@Size)
+ BEGIN
+  --- Do something --
+  --- IF @@ERROR <>0 BREAK;
+ SET @Count = @Count+1  
+ END
+
+
+---Loop2 Complex
+CREATE PROCEDURE [dbo].[uspStgMail]
+AS
+
+DECLARE @Msg nvarchar(2000)
+DECLARE @Email varchar(50)
+DECLARE @EmailList table (Email varchar(50))
+DECLARE @First varchar(50)
+DECLARE @Last varchar(50)
+
+    INSERT INTO @EmailList Select Distinct Email from Connections	
+  
+	SET @Email = NULL
+	SELECT TOP 1 @Email=Email  FROM @EmailList
+
+	WHILE (@Email IS NOT NULL)
+	
+	 BEGIN	          	
+				SET @Last = NULL
+				SET @First = NULL
+				SELECT @First=First FROM Connections where Email=@Email
+				SELECT @Last=Last FROM Connections where Email=@Email
+				SET @Msg=
+			 N'<HTML><body><p><font size ="2" face="arial">Hi '+ @First +', <BR>'+
+              N'My current project at GAF is wrapping up and I might be coming available within the next 4-5 weeks. ' +
+              N'In case you have any upcoming Microsoft BI opportunities, please let me know.' +
+              N'<BR> ' +
+              N'Regards, <BR>' +
+              N'<b><i>Nick Kletnoix via kletnoi@yahoo.com</i></b><BR>' +
+              N'<BR> ' +
+              N'<BR>PS. Please use my personal email when responding. Thanks' +
+              N'</font></p></body></html>'
+								
+				EXEC msdb.dbo.sp_send_dbmail
+				@profile_name = 'Nick',
+				@recipients = @Email,
+				--@from_address = 'Nick Kletnoi',
+				--@reply_to = 'kletnoi@yahoo.com',
+				@subject = 'Upcoming Availability of Nick',
+				@importance = 'High',
+				@body_format = 'HTML',
+				@body = @Msg
+		       
+		       Update Connections
+		       SET Status='Email Sent' 
+		       WHERE Email=@Email 
+		
+		DELETE FROM @EmailList WHERE Email = @Email
+		SET @Email = NULL
+		SELECT TOP 1 @Email = Email  FROM @EmailList
+		IF @@rowcount = 0 SET @Email = NULL
+   END 
+
+GO
+
+
+
+
+---BCP
+EXEC sp_configure 'xp_cmdshell', 1; GO 
+EXEC xp_cmdshell 'bcp CoStar.cube.D_Market out C:\Temp\Market1.txt -c -T'
+
+
+---Proc / Cursor 
+CREATE PROCEDURE [dbo].[uspProcessStraightLineContracts]
+AS
+DECLARE @CURRENT_CONTRACTID INT
+
+ DECLARE C CURSOR FOR  SELECT DISTINCT [ContractID] FROM RevPro..[Active_SOFile]  ORDER BY [ContractID]
+  
+ OPEN C
+ FETCH C into @CURRENT_CONTRACTID
+ WHILE @@FETCH_STATUS = 0
+ BEGIN
+   EXEC [dbo].[usp_CreateStraightLineWaterfall2] @CURRENT_CONTRACTID
+FETCH C into @CURRENT_CONTRACTID
+ END
+
+ CLOSE C
+ DEALLOCATE C
+
+DELETE FROM [dbo].[StraightLineContracts] where Contract_Final_Amt IS NULL;
+DELETE FROM [dbo].[StraightLineContracts] where StraightLine_Flg=0; 
+
+
+-- First Day / Periods Start/End
+declare @StartingDate varchar(10), @EndDate  varchar(10)
+
+        SET @StartingDate	= CONVERT(VARCHAR(10),DATEADD(yy, DATEDIFF(yy, 0, GETDATE())  , 0), 101) 
+		SET @EndDate		= CONVERT(VARCHAR(10),DATEADD(yy, DATEDIFF(yy, 0, GETDATE()) +1, -1), 101)
+
+select @StartingDate,@EndDate
+
+---Date Manipulation
+SELECT REPLACE(CONVERT(VARCHAR(10), GETDATE(), 101), '/', '') AS [MMDDYYYY]
+
+
+---Flat
+
+DECLARE @t TABLE (cid VARCHAR(64) , n VARCHAR(64), pid VARCHAR(64))
+DECLARE @t2 TABLE (ID VARCHAR(64), Level06 varchar (64) ,Level05 varchar (64),Level04 varchar (64),Level03 varchar (64), Level02 varchar(64), Level01 varchar(64))
+
+INSERT @t (cid,n,pid) SELECT [CHILD_ID],[CHILD_DESCR],[PARENT_ID] FROM [dbo].[COST_CENTER_HIER1];
+
+WITH 
+
+e AS
+rs
+(
+SELECT *,cid as id, 1 AS l 
+    FROM @t a WHERE NOT EXISTS 
+	               (SELECT * FROM @t b WHERE a.cid = b.pid)
+UNION ALL
+SELECT t.*,	e.id, e.l+1 
+    FROM @t t INNER JOIN e ON t.cid = e.pid ),
+
+--select * from e  /// check how the raw input is progressing in terms of levels
+
+e2 AS ( SELECT n, l, id FROM e)
+
+INSERT @t2 (ID,Level06,Level05,Level04,Level03,Level02,Level01)
+SELECT * FROM e2
+PIVOT ( MAX(n) FOR l IN ([1],[2],[3],[4],[5],[6])) P;
+
+INSERT MD.COST_CENTER (COST_CENTER, COST_CENTER_NAME, DIVISION, AGENCY, DEPARTMENT, BUSINESS_AREA, HIERARCHY)
+select ID,Level06,Level05,Level04,Level03,Level02,Level01 from @t2
+--------
+
+
+---MERGE
+MERGE INTO [MD].[AMOUNT_TYPE] TGT
+	 USING 
+	 (SELECT 
+	 [DATA_AS_OF_DATE],
+     [DS_INSERT_DATE]
+  	  )  SRC
+	 ON
+TGT.AMOUNT_TYPE=SRC.AMOUNT_TYPE
+WHEN MATCHED THEN 
+UPDATE SET 
+TGT.[DATA_AS_OF_DATE]=SRC.[DATA_AS_OF_DATE]
+WHEN NOT MATCHED THEN
+INSERT 
+(
+[DATA_AS_OF_DATE],
+[DS_INSERT_DATE]
+)
+VALUES( 
+SRC.[DATA_AS_OF_DATE],
+SRC.[DS_INSERT_DATE]
+);
+ 
+
+----Create TABLE
+CREATE TABLE [MD].[BUSINESS_AREA](
+	[DATA_AS_OF_DATE] [date] NULL,
+	[DS_INSERT_DATE] [date] NULL,
+	[DS_INSERT_TIME] [datetime2](7) NULL,
+	[DW_STATUS_IND] [varchar](1) NULL,
+	[BUSINESS_AREA] [varchar](4) NOT NULL,
+	[DESCRIPTION] [varchar](30) NULL,
+	[d] [varchar](100) NULL
+) ON [PRIMARY]
+
+
+----Strings1
+substring(target_table, charindex('(',target_table)+1,ABS(charindex(')',target_table)-charindex('(',target_table)-1)) 
+SELECT REPLACE(CONVERT(VARCHAR(10), GETDATE(), 101), '/', '') AS [MMDDYYYY]
+
+---ROWCOUNT
+SELECT sc.name +'.'+ ta.name AS TableName
+,SUM(pa.rows) RowCnt
+FROM sys.tables ta
+INNER JOIN SYS.columns c  
+ON c.[OBJECT_ID]=ta.[OBJECT_ID]
+INNER JOIN sys.partitions pa
+ON pa.OBJECT_ID = ta.OBJECT_ID
+INNER JOIN sys.schemas sc
+ON ta.schema_id = sc.schema_id
+---WHERE
+--c.name='BUNDLEID' AND
+--ta.name='LOCATION' 
+GROUP BY sc.name,ta.name
+ORDER BY ta.name
+ORDER BY SUM(pa.rows) DESC;
+
+
+---EXISTS
+INSERT INTO dbo.Dim_City
+SELECT DISTINCT ISNULL(MD.CITY,'None') FROM RDWDB..MBR_DESCR MD
+WHERE
+	NOT EXISTS(SELECT * FROM Dim_City DC WHERE DC.City=ISNULL(MD.CITY,'None'))
+ORDER BY ISNULL(CITY,'None')
+
+---INDEX
+CREATE CLUSTERED INDEX [INX_ETL.META_EXCEPTION_EXCEPTION_ID] ON [etl].[META_EXCEPTION] 
+(
+ [EXCEPTION_ID] ASC
+)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [CMADW_FG_SRC]
+
+
+---COMPUTE
+SELECT CustomerID,EmployeeID, OrderID, Freight FROM ORDERS ORDER BY CustomerID, EmployeeID
+COMPUTE SUM(Freight) by CustomerID, EmployeeID
+
+
+---XML
+
+--- STEP1 --------
+CREATE TABLE XMLwithOpenXML
+(
+Id INT IDENTITY PRIMARY KEY,
+XMLData XML,
+LoadedDateTime DATETIME
+)
+
+INSERT INTO XMLwithOpenXML(XMLData, LoadedDateTime)
+SELECT CONVERT(XML, BulkColumn) AS BulkColumn, GETDATE() 
+FROM OPENROWSET(BULK 'D:\OpenXMLTesting.xml', SINGLE_BLOB) AS x
+
+SELECT * FROM XMLwithOpenXML;
+
+---- STEP 2 -----------
+DECLARE @XML AS XML, @hDoc AS INT, @SQL NVARCHAR (MAX)
+SELECT @XML = XMLData FROM XMLwithOpenXML
+EXEC sp_xml_preparedocument @hDoc OUTPUT, @XML
+
+SELECT CustomerID, CustomerName, Address
+FROM OPENXML(@hDoc, 'ROOT/Customers/Customer')
+WITH 
+(
+CustomerID [varchar](50) '@CustomerID',
+CustomerName [varchar](100) '@CustomerName',
+Address [varchar](100) 'Address'
+)
+EXEC sp_xml_removedocument @hDoc
+
+-------------------------------------------------------
+------- GAPS ------------------------------------------
+-------------------------------------------------------
+=============
+-----List----
+==============
+Seq_nbr   val
+=============
+1    |     6
+2    |     41 
+3    |     12
+4    |     51
+5    |     21
+=============
+---------------------------------------------
+--Gap---- Identifying the Gaps in the data ----- 
+---------------------------------------------
+SELECT (L1.seq_nbr + 1) as gap_start,
+       (MIN(L2.seq_nbr)-1) as gap_end
+FROM List L1, List L2
+WHERE L1.seq_nbr < L2.seq_nbr
+GROUP BY L1.seq_nbr
+HAVING (MIN(L2.seq_nbr)-L1.seq_nbr)>1;
+------------------------------------------
+---------------------------------------------------------
+----- Identifying the Continugous ranges in the data ----
+---------------------------------------------------------
+SELECT
+ROW_NUMBER() OVER (ORDER BY Z.rnk) as RangeNumber,
+MIN(Z.nbr) left_boarder_of_range, 
+MAX(Z.nbr) right_boarder_of_range
+FROM (
+SELECT S1.seq_nbr as nbr,
+       (S1.seq_nbr -
+	   (SELECT COUNT(*) FROM dbo.List AS S2 WHERE S2.seq_nbr<=S1.seq_nbr )) as rnk
+	   FROM dbo.List as S1
+) Z
+GROUP BY Z.rnk
+
+------------------------------------------------------
+--- Identifying the Employees under a manager(s)------
+-------------------------------------------------------
+
+Emp_ID |  Emp_Name   |  Emp_Manager_ID
+========================================
+1      |  Admin      |   Null         
+2      |  John       |   1            
+3      |  Sam        |   2             
+4      |  Mike       |   2            
+5      |  Jeff       |   4            
+6      |  Ben        |   3            
+7      |  Vicky      |   5
+———————————
+————————————
+
+WITH Subordinates AS
+(
+   SELECT e.Emp_ID, e.Emp_Name, e.Emp_Manager_ID
+   FROM Employee AS e
+   WHERE e.Emp_Manager_ID IN (5)
+   UNION ALL
+   SELECT e.Emp_ID, e.Emp_Name, e.Emp_Manager_ID
+   FROM Employee AS e
+   INNER JOIN Subordinates AS sub ON e.Emp_Manager_ID = sub.Emp_ID
+)
+SELECT s.Emp_ID, s.Emp_Name, s.Emp_Manager_ID
+FROM Subordinates AS s
+----------------------------------------------------------------------
+----------- Determine the number of levels in the Employee Hierarchy
+----------- when the number of levels of the recursion is unknown
+---------------------------------------------------------------------
+WITH Emp AS
+(
+SELECT *, 0 AS lvl FROM dbo.Employee WHERE Emp_Manager_ID IS NULL
+UNION ALL 
+SELECT e.*, et.lvl+1 AS lvl FROM Emp et JOIN dbo.Employee e ON 
+et.Emp_ID=e.Emp_Manager_ID
+)
+select * from Emp order by lvl ASC
+
+---------------------------------------------------------------------
+----------- Simplistic Unwrap of a recursion when the number of lvl is
+----------- know before hand -----------------------------------------
+----------------------------------------------------------------------
+
+SELECT e1.*, e2.*, e3.*,e4.*
+FROM dbo.Employee e1                -- 1st level
+LEFT OUTER JOIN dbo.Employee e2 
+     ON e2.Emp_Manager_ID=e1.Emp_ID -- 2nd level	
+LEFT OUTER JOIN dbo.Employee e3 
+     ON e3.Emp_Manager_ID=e2.Emp_ID -- 3d level	
+LEFT OUTER JOIN dbo.Employee e4 
+     ON e4.Emp_Manager_ID=e3.Emp_ID -- 4th level
+
+
+--------------------------------------------------------------------------
+-------- Finding the shortest route from A to B Algorithm ----------------
+--------------------------------------------------------------------------
+The first part of the CTE queries the @start point; 
+the recursive part constructs the paths to each node 
+and sums up all the distances between each pair of nodes 
+in the path as the total distance of the path.
+--------------------------------------------------------------------------
+NULL	A	0
+A	B	4
+A	C	7
+B	C	10
+C	D	15
+B	D	17
+A	D	23
+B	E	22
+C	E	29
+-------------------
+   WITH CommonTableExp1
+   AS (SELECT PB,
+         CASE 
+            WHEN PA IS NULL
+               THEN CAST ('-' + ISNULL (PA, PB) + '-' AS VARCHAR (MAX))
+            WHEN PA IS NOT NULL
+               THEN CAST ('-' + PA + '-' + PB + '-' AS VARCHAR (MAX))
+            END FullPath,
+         Distance TotalDistance
+      FROM Graph
+      WHERE (PA = @strt)
+      UNION ALL
+      SELECT a.PB,
+         c.FullPath + '-' + a.PB + '-' FullPath,
+         TotalDistance + a.Distance TotDistance
+      FROM Graph a, CommonTableExp1 c
+      WHERE a.PA = c.PB
+      ),
+   CommonTableExp2
+   AS (SELECT *, RANK () OVER (ORDER BY TotalDistance) TheRank
+      FROM CommonTableExp1
+      WHERE PB = @end AND PATINDEX ('%' + @end + '%', FullPath) > 0)
+   SELECT FullPath, TotalDistance
+   FROM CommonTableExp2
+   WHERE TheRank = 1;
+END
+
+------------------------------------------------------------
+-- Finding all Resources Booked for a given Time Ranged ----
+------------------------------------------------------------
+ bookings        
+|-------------------
+| id    | pkey      
+| start | timestamp 
+| end   | timestamp 
+| qty   | int    
+-----------------------------------------------------------
+WITH FindBookings
+   AS (
+     SELECT end,
+         CASE 
+            WHEN start IS NULL
+               THEN CAST ('-' + ISNULL (start, end) + '-' AS VARCHAR (MAX))
+            WHEN start IS NOT NULL
+               THEN CAST ('-' + start + '-' + end + '-' AS VARCHAR (MAX))
+            END AllBookings,
+         qty TotalQty
+      FROM bookings
+      WHERE (start = @strt AND end =  @end)
+      UNION ALL
+      SELECT a.end,
+         c.Allbookings + '-' + a.end + '-' Allbookings,
+         TotalQty + a.Qty TotQty
+      FROM booking a, FindBookings c
+      WHERE a.start = c.end
+);
+
+--------------------------------------------------------------------------
+----- Finding all of the overlapping bookings and summing them up --------
+--------------------------------------------------------------------------
+SELECT coalesce(max(qtyOverlap.sum),0) booked
+FROM (
+    SELECT coalesce(sum(b2.qty),0) sum
+        FROM booking b1
+        LEFT JOIN (
+            SELECT b.qty, b.tStart, b.tEnd FROM booking b
+        ) b2
+        ON b1.tStart < b2.tEnd AND
+           b1.tEnd > b2.tStart AND
+           b2.tStart < @start AND
+           b2.tEnd > @end
+       WHERE 
+              b1.tStart < @start AND
+              b1.tEnd > @end
+        GROUP BY b1.id
+) qtyOverlap
+GROUP BY qtyOverlap.itemId
+----------------------------------------------------------------------------
+---- Finding Available Rooms for a Given Period ----------------------------
+----------------------------------------------------------------------------
+table bookings
+---------------------
+booking_id    |    room_id   |    start_datetime  |   end_datetime    |   customer_id
+-------------------------------------------------------------------------------------
+001           |     1        |  12-09-2012 2:35pm | 14-09-2012 9:00am |    23
+002           |     2        | 10-09-2012 1:00am  | 20-09-2012 9:00am |    20
+003           |     4        |  09-09-2012 1:35pm | 21-09-2012 9:00am |    43
+004           |     1        |  22-09-2012 2:35pm | 24-09-2012 9:00am |    9
+005           |     3        |  12-09-2012 9:00am | 13-09-2012 9:00am |    53
+006           |     6        |  15-09-2012 9:00am | 19-09-2012 9:00am |    27
+-------------------------
+table rooms
+|    room_id   |   
+---------------
+001           |
+002           |   
+------------------------
+SELECT r.room_id
+FROM rooms r
+WHERE r.room_id NOT IN (
+    SELECT b.room_id FROM bookings b
+    WHERE NOT (b.end_datetime   < '2012-09-14T18:00'
+               OR
+               b.start_datetime > '2012-09-21T09:00'))
+ORDER BY r.room_id;
+------------------------------------------------------------------------------------
+--- 1.return the number of rooms that should be booked to accomodate all the meetings
+--- 2.determine the number of concurrent meetings for a given time -----------------
+------------------------------------------------------------------------------------
+---considering the fact that one room can accomodate two meetings max --------------
+------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------
+table meetings:
+id, start_time, end_time
+------------------------
+select max(concurrent_meetings) as rooms_needed
+from
+  ( select time, sum(sum(counter)) over (order by time) as concurrent_meetings
+    from
+      ( select start_time as time, 1 as  counter from meetings
+        union all
+        select end_time, -1 from meetings
+      ) as c
+    group by time
+  ) as m ;
+
+
+
+
+
+
+
+
+

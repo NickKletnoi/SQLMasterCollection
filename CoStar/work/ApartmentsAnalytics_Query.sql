@@ -1,0 +1,52 @@
+
+
+/*
+----------------------------------------------
+--------------Goals for today:----------------
+----------------------------------------------
+1. Write the SQL for the Apartments report;
+2. Write the subtotals for the Apartments report;
+3. Release the Apartment report at 5pm today;
+4. Study the 60-90	questions as part of the cert;
+------------------------------------------------
+*/
+
+----------------------Apartments Analysis SQL V001.1
+SELECT
+C.ContractID,
+SP.SkuName, 
+LOC.LocationID as BillingLocID ,
+LOC.LocationName as ClientName, 
+CT.ContactID,
+CT.FirstName + ' '+ CT.LastName as OutsideContact,
+P.ProductName, 
+SUM(L.OriginalMonthlyPrice) as ContractAmount,
+SUM(PL.ManualListPrice) ManualAmount 
+INTO [Apt].[SalesPricingReport]
+FROM  
+[DCSQLPRD104].Enterprise.dbo.LineItem L JOIN 
+[DCSQLPRD104].Enterprise.dbo.Contract C ON L.ContractID=C.ContractID LEFT JOIN 
+[DCSQLPRD104].Enterprise.dbo.Contact CT ON C.ContractContactID=CT.ContactID LEFT JOIN 
+[DCSQLPRD104].Enterprise.dbo.Location LOC ON C.BillingLocationID=LOC.LocationID LEFT JOIN
+dbo.SkuBridge SB ON L.LineItemID=SB.LineItemID LEFT JOIN dbo.SkuPrice SP ON SB.SKUID=SP.SKUID LEFT JOIN
+[DCSQLPRD104].Enterprise.dbo.Product P ON L.ProductID=P.ProductID JOIN [Apt].[ProductList] PL ON SB.SKUID=PL.SKUID
+WHERE P.ProductName like  '%Apts%' and L.LineItemStatusID=1 
+GROUP BY L.LineItemID, P.ProductName,LOC.LocationName,LOC.LocationID,CT.LastName, CT.FirstName,SP.SkuName,CT.ContactID,C.ContractID
+HAVING  SUM(L.OriginalMonthlyPrice)>1
+-----------------------------------------------------------------------------------------------------------
+
+select * from [Apt].[ProductList]
+
+select * from [DCSQLPRD104].Enterprise.dbo.Contact
+
+select top 10 * from [DCSQLPRD104].Enterprise.dbo.Contract
+
+
+select top 10 * from [DCSQLPRD104].Enterprise.dbo.Location where P
+
+
+
+select OrderID, SUM(ExtendedAmount) as TotalSales
+from Sales.Details
+GROUP BY OrderID
+ORDER BY SUM(ExtendedAmount) DESC

@@ -1,0 +1,41 @@
+SELECT SKUID, date, 
+SUM(Amount) as Amt 
+INTO #skulist 
+FROM LineItem WHERE skuid<>-1 GROUP BY SKUID, date 
+HAVING SKUID>1
+
+SELECT DISTINCT SKUID
+FROM #skulist
+WHERE Amt<>0
+ORDER BY SKUID
+
+SELECT 
+DISTINCT SKUID 
+INTO #skulist1
+FROM #skulist
+------------------------------------------
+------------------------------------------
+SELECT SKUID, date, 
+SUM(Amount) as Amt 
+INTO #skulist 
+FROM LineItem WHERE skuid<>-1 
+GROUP BY SKUID, date 
+HAVING SKUID>1
+
+SELECT SKUID,DATE , AMT
+FROM #skulist
+WHERE Amt<>0
+ORDER BY SKUID,DATE , AMT
+
+SELECT 
+DISTINCT SKUID 
+INTO #skulist1
+FROM #skulist 
+
+select skuid from
+#skulist1 order by SKUID
+-----------------------------------
+
+
+
+

@@ -1,0 +1,1 @@
+bcp CoStar.bal.MergeBal IN L:\Financial Systems\Nick\mrge_bal_092517.txt -c -T

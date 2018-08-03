@@ -1,0 +1,59 @@
+SELECT * FROM [dbo].[SkuPrice]
+
+SELECT * 
+INTO
+#LI1
+FROM [dbo].[LineItem_Exception] 
+WHERE Amount<>0
+ORDER BY ContractID, BundleID, ProductID
+
+SELECT * FROM LINEITEM_EXCEPTION WHERE Amount=0
+
+SELECT * 
+INTO LineItemx
+FROM #LI1 ORDER BY ContractID, BundleID, ProductID
+
+SELECT * FROM LineItemx
+
+SELECT * FROM LineItem WHERE SKUID IN (
+0,
+8,
+16,
+24,
+34,
+43
+)
+AND AMOUNT<>0
+ORDER BY CONTRACTID, BUNDLEID, PRODUCTID
+
+SELECT * FROM SkuPrice WHERE SKUID IN (
+0,
+8,
+16,
+24,
+34,
+43
+)
+ORDER BY SKUID
+
+SELECT SKUID, COUNT(*) AS CNT, SUM(AMOUNT) AS TOTAL
+FROM LineItem
+GROUP BY SKUID
+
+SELECT * FROM SkuPrice
+
+
+SELECT * FROM [dbo].[SkuPrice]
+
+
+SELECT SKUID, date, 
+SUM(Amount) as Amt 
+INTO #skulist 
+FROM LineItem WHERE skuid<>-1 
+GROUP BY SKUID, date 
+HAVING SKUID>1
+
+SELECT SKUID,DATE , AMT
+FROM #skulist
+WHERE Amt<>0
+ORDER BY SKUID,DATE DESC , AMT

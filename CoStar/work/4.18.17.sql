@@ -1,0 +1,25 @@
+SELECT * FROM SkuLG WHERE SKUID IN(
+144,
+152,
+167,
+176,
+1694,
+559
+) ORDER BY SKUID;
+
+SELECT * FROM SkuPriceLG 
+WHERE SKUID IN(
+144,
+152,
+167,
+176,
+1694,
+559
+) ORDER BY SKUID;
+------------------
+
+SELECT * FROM [dbo].[SkuSimple] ORDER BY SKUID
+
+
+
+

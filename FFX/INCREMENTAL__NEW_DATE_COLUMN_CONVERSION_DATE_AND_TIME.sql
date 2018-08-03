@@ -1,0 +1,59 @@
+/*
+
+    [DATA_AS_OF_DATE] [date] NULL,
+	[DS_INSERT_DATE] [date] NULL,
+	[DS_INSERT_TIME] [datetime2](7) NULL,
+
+
+DATA_AS_OF_DATE
+----------------
+2015-02-08
+
+DS_INSERT_DATE
+----------------
+2015-02-09
+
+DS_INSERT_TIME
+----------------
+2015-02-09 17:27:29.6070000
+
+*/
+
+SELECT * FROM [MD].[AMOUNT_TYPE]
+
+INSERT [MD].[AMOUNT_TYPE1] (
+[AMOUNT_TYPE],
+[DESCRIPTION],
+[LONG_DESCRIPTION])
+SELECT 
+[AMOUNT_TYPE],
+[DESCRIPTION],
+[LONG_DESCRIPTION]
+FROM 
+[MD].[AMOUNT_TYPE]
+
+SELECT * FROM MD.AMOUNT_TYPE1
+--------------------------------------------------------------------
+UPDATE MD.AMOUNT_TYPE1
+SET DATA_AS_OF_DATE=CONVERT(DATE,'2015-02-08',120)
+WHERE DATA_AS_OF_DATE IS NULL
+--------------------------------------------------------------------
+UPDATE MD.AMOUNT_TYPE1
+SET DS_INSERT_DATE=CONVERT(DATE,'2015-02-09',120)
+WHERE DS_INSERT_DATE IS NULL
+--------------------------------------------------------------------
+UPDATE MD.AMOUNT_TYPE1
+SET DS_INSERT_TIME=CONVERT(datetime2,'2015-02-09 17:27:29.6070000')
+WHERE DS_INSERT_TIME IS NULL
+--------------------------------------------------------------------
+
+UPDATE MD.AMOUNT_TYPE1
+SET DS_INSERT_TIME=NULL
+WHERE DS_INSERT_TIME IS NOT NULL
+
+
+
+SELECT CONVERT(datetime2,'2015-02-09 17:27:29.6070000')
+
+
+
