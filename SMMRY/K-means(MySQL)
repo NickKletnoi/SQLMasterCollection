@@ -1,0 +1,101 @@
+
+# CREATE DATABASE :
+show databases;
+
+create database kmeans_customer;
+
+use kmeans_customer;
+
+# CREATE TABLE :
+ 
+    CREATE TABLE cust_attribute (
+    cust_id INT AUTO_INCREMENT PRIMARY KEY,
+    attribute1_name VARCHAR(25),
+    attribute1_type VARCHAR(255),
+    attribute1_value INT,
+    attribute2_name VARCHAR(25),
+    attribute2_type VARCHAR(255),
+    attribute2_value INT  );
+
+# INSERT DATA INTO TABLE :
+
+    insert into cust_attribute values(not null,'sports','hockey',1,'movies','comedy',1);
+   	insert into cust_attribute values(not null,'sports','hockey',1,'movies','comedy',1);
+   	insert into cust_attribute values(not null,'sports','hockey',1,'movies','comedy',1); 	
+  	insert into cust_attribute values(not null,'sports','cricket',4,'movies','drama',5);
+ 	  insert into cust_attribute values(not null,'sports','cricket',4,'movies','drama',5);	
+    insert into cust_attribute values(not null,'sports','Baseball',3,'movies','mythology',7);
+    insert into cust_attribute values(not null,'sports','Baseball',3,'movies','mythology',7);     
+   	insert into cust_attribute values(not null,'sports','cricket',4,'movies','mythology',7);
+  	insert into cust_attribute values(not null,'sports','cricket',4,'movies','mythology',7);
+  	insert into cust_attribute values(not null,'sports','ice_hockey',2,'movies','non-fiction',4);
+  	insert into cust_attribute values(not null,'sports','ice_hockey',2,'movies','non-fiction',4);
+  	insert into cust_attribute values(not null,'sports','ice_hockey',2,'movies','non-fiction',4);    
+    insert into cust_attribute values(not null,'sports','Tennis',7,'movies','comedy',1);
+  	insert into cust_attribute values(not null,'sports','Tennis',7,'movies','comedy',1);
+    insert into cust_attribute values(not null,'sports','Volleyball',8,'movies','Fantasy',8);
+  	insert into cust_attribute values(not null,'sports','Volleyball',8,'movies','Fantasy',8);
+	  insert into cust_attribute values(not null,'sports','soccer',9,'movies','Tragedy',9);
+  	insert into cust_attribute values(not null,'sports','soccer',9,'movies','Tragedy',9);
+  	insert into cust_attribute values(not null,'sports','soccer',9,'movies','Tragedy',9);
+
+
+SELECT     * FROM    cust_attribute;
+
+# Create Cluster table
+
+CREATE CLUSTER TABLE :
+   CREATE TABLE cust_cluster (
+    cust_id INT(11) NOT NULL DEFAULT '0',
+    z_scoreX DOUBLE,
+    z_scoreY DOUBLE,
+    cluster_id INT(11)    );
+
+# Implementation of k-Means algorithm in SQL 
+
+DROP PROCEDURE customer_kmeans;
+DELIMITER //
+CREATE PROCEDURE customer_kmeans()
+BEGIN
+truncate cust_cluster;
+insert into  cust_cluster (cust_id,z_scoreX,z_scoreY) select zs_custid,z_score_X,z_score_Y from ( SELECT 
+    cust_id as zs_custid,
+    ABS(attribute1_value - meanX) / sdX AS z_score_X,
+    ABS(attribute2_value - meanY) / sdY AS z_score_Y
+FROM
+    (SELECT 
+        AVG(attribute1_value) AS meanX,
+            STDDEV(attribute1_value) AS sdX,
+            AVG(attribute2_value) AS meanY,
+            STDDEV(attribute2_value) AS sdY
+    FROM
+        cust_attribute) as M_std,cust_attribute) as z_s;
+        
+TRUNCATE clusters;
+INSERT INTO clusters (x_score, y_score) SELECT distinct z_scoreX, z_scoreY FROM cust_cluster;
+REPEAT
+    UPDATE cust_cluster a  SET cluster_id = (SELECT clusterid FROM clusters b  ORDER BY POW(a.z_scoreX-b.x_score,2)+POW(a.z_scoreY-b.y_score,2) ASC LIMIT 1);
+UPDATE clusters C,
+    (SELECT 
+        cluster_id,
+            AVG(z_scoreX) AS x_score,
+            AVG(z_scoreY) AS y_score
+    FROM
+        cust_cluster
+    GROUP BY cluster_id) D 
+SET 
+    C.x_score = D.x_score,
+    C.y_score = D.y_score
+WHERE
+    C.clusterid = D.cluster_id;
+UNTIL ROW_COUNT() = 0 END REPEAT;
+#TRUNCATE clusters;
+
+END
+//
+
+CALL customer_kmeans();
+
+
+
+SELECT     * FROM   cust_cluster;
