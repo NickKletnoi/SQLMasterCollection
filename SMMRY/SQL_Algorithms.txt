@@ -1,3 +1,28 @@
+--bulk- insert csv ---
+
+
+BULK INSERT  dbo.Products
+FROM 'C:\Users\C-VR76897\Downloads\datafiles\BI_REPORT - Products.csv'
+WITH (FORMAT = 'CSV', FIRSTROW = 2,  ROWTERMINATOR =  '\n');
+--------------------------------------------------------------------------
+BULK INSERT  dbo.Serial_No
+FROM 'C:\Users\C-VR76897\Downloads\datafiles\BI_REPORT - Serial_Nos.csv'
+WITH (FORMAT = 'CSV', FIRSTROW = 2,  ROWTERMINATOR =  '\n');
+--------------------------------------------------------------------------
+BULK INSERT [dbo].[ShipTo_Deliveries]
+FROM 'C:\Users\C-VR76897\Downloads\datafiles\BI_REPORT - ShipTo_Deliveries.csv'
+WITH (FORMAT = 'CSV', FIRSTROW = 2,  ROWTERMINATOR =  '\n');
+-------------------------------
+BULK INSERT [dbo].[US_Customers]
+FROM 'C:\Users\C-VR76897\Downloads\datafiles\BI_REPORT - US_Customers.csv'
+WITH (FORMAT = 'CSV', FIRSTROW = 2,  ROWTERMINATOR =  '\n');
+---------------------------------
+BULK INSERT [dbo].[US_Deliveries]
+FROM 'C:\Users\C-VR76897\Downloads\datafiles\BI_REPORT - US_Deliveries.csv'
+WITH (FORMAT = 'CSV', FIRSTROW = 2,  ROWTERMINATOR =  '\n');
+
+
+
 --------------------------------------------------------
 
 ---Dups1 -----------------------------------------------
